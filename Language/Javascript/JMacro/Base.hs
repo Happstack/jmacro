@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances, OverlappingInstances, OverloadedStrings, TypeFamilies, RankNTypes, DeriveDataTypeable, StandaloneDeriving, FlexibleContexts, TypeSynonymInstances, ScopedTypeVariables, GADTs, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleInstances, UndecidableInstances, OverlappingInstances, OverloadedStrings, TypeFamilies, RankNTypes, DeriveDataTypeable, StandaloneDeriving, FlexibleContexts, TypeSynonymInstances, ScopedTypeVariables, GADTs
+           , GeneralizedNewtypeDeriving, LambdaCase #-}
 
 -----------------------------------------------------------------------------
 {- |
@@ -86,9 +87,11 @@ instance Functor IdentSupply where
 
 takeOne :: State [Ident] Ident
 takeOne = do
-  (x:xs) <- get
-  put xs
-  return x
+  get >>= \case
+            (x:xs) -> do
+               put xs
+               return x
+            _ -> fail "not enough elements"
 
 newIdentSupply :: Maybe String -> [Ident]
 newIdentSupply Nothing     = newIdentSupply (Just "jmId")
@@ -399,9 +402,11 @@ withHygiene f x = jfromGADT $ case jtoGADT x of
     JMGId _ -> jtoGADT $ f x
     where
         inScope z = IS $ do
-            ([StrI a], b) <- splitAt 1 `fmap` get
-            put b
-            return $ withHygiene_ a f z
+            splitAt 1 `fmap` get >>= \case
+              ([StrI a], b) -> do
+                put b
+                return $ withHygiene_ a f z
+              _ -> fail "Not as string"
 
 withHygiene_ :: JMacro a => String -> (a -> a) -> a -> a
 withHygiene_ un f x = jfromGADT $ case jtoGADT x of
@@ -427,25 +432,28 @@ scopify x = evalState (jfromGADT <$> go (jtoGADT x)) (newIdentSupply Nothing)
                              blocks (DeclStat (StrI i) t : xs) =  case i of
                                 ('!':'!':i') -> (DeclStat (StrI i') t:) <$> blocks xs
                                 ('!':i') -> (DeclStat (StrI i') t:) <$> blocks xs
-                                _ -> do
-                                  (newI:st) <- get
-                                  put st
-                                  rest <- blocks xs
-                                  return $ [DeclStat newI t `mappend` jsReplace_ [(StrI i, newI)] (BlockStat rest)]
+                                _ -> get >>= \case
+                                     (newI:st) -> do
+                                       put st
+                                       rest <- blocks xs
+                                       return $ [DeclStat newI t `mappend` jsReplace_ [(StrI i, newI)] (BlockStat rest)]
+                                     _ -> fail "scopify"
                              blocks (x':xs) = (jfromGADT <$> go (jtoGADT x')) <:> blocks xs
                              (<:>) = liftM2 (:)
-                   (JMGStat (ForInStat b (StrI i) e s)) -> do
-                          (newI:st) <- get
-                          put st
-                          rest <- jfromGADT <$> go (jtoGADT s)
-                          return $ JMGStat . ForInStat b newI e $ jsReplace_ [(StrI i, newI)] rest
-                   (JMGStat (TryStat s (StrI i) s1 s2)) -> do
-                          (newI:st) <- get
-                          put st
-                          t <- jfromGADT <$> go (jtoGADT s)
-                          c <- jfromGADT <$> go (jtoGADT s1)
-                          f <- jfromGADT <$> go (jtoGADT s2)
-                          return . JMGStat . TryStat t newI (jsReplace_ [(StrI i, newI)] c) $ f
+                   (JMGStat (ForInStat b (StrI i) e s)) -> get >>= \case
+                          (newI:st) -> do
+                             put st
+                             rest <- jfromGADT <$> go (jtoGADT s)
+                             return $ JMGStat . ForInStat b newI e $ jsReplace_ [(StrI i, newI)] rest
+                          _ -> fail "scopify2"
+                   (JMGStat (TryStat s (StrI i) s1 s2)) -> get >>= \case
+                          (newI:st) -> do
+                            put st
+                            t <- jfromGADT <$> go (jtoGADT s)
+                            c <- jfromGADT <$> go (jtoGADT s1)
+                            f <- jfromGADT <$> go (jtoGADT s2)
+                            return . JMGStat . TryStat t newI (jsReplace_ [(StrI i, newI)] c) $ f
+                          _ -> fail "scopify3"
                    (JMGExpr (ValExpr (JFunc is s))) -> do
                             st <- get
                             let (newIs,newSt) = splitAt (length is) st
