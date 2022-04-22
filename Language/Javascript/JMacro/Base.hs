@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances, OverlappingInstances, OverloadedStrings, TypeFamilies, RankNTypes, DeriveDataTypeable, StandaloneDeriving, FlexibleContexts, TypeSynonymInstances, ScopedTypeVariables, GADTs
+{-# LANGUAGE CPP, FlexibleInstances, UndecidableInstances, OverlappingInstances, OverloadedStrings, TypeFamilies, RankNTypes, DeriveDataTypeable, StandaloneDeriving, FlexibleContexts, TypeSynonymInstances, ScopedTypeVariables, GADTs
            , GeneralizedNewtypeDeriving, LambdaCase #-}
 
 -----------------------------------------------------------------------------
@@ -54,7 +54,12 @@ import Numeric(showHex)
 import Safe
 import Data.Aeson
 import qualified Data.Vector as V
+#if MIN_VERSION_aeson (2,0,0)
+import qualified Data.Aeson.Key    as KM
+import qualified Data.Aeson.KeyMap as KM
+#else
 import qualified Data.HashMap.Strict as HM
+#endif
 import Text.PrettyPrint.Leijen.Text hiding ((<$>))
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
@@ -804,7 +809,11 @@ instance ToJExpr Value where
     toJExpr (Number n)       = ValExpr $ JDouble $ realToFrac n
     toJExpr (String s)       = ValExpr $ JStr $ TS.unpack s
     toJExpr (Array vs)       = ValExpr $ JList $ map toJExpr $ V.toList vs
+#if MIN_VERSION_aeson (2,0,0)
+    toJExpr (Object obj)     = ValExpr $ JHash $ M.fromList $ map (KM.toString *** toJExpr) $ KM.toList obj
+#else
     toJExpr (Object obj)     = ValExpr $ JHash $ M.fromList $ map (TS.unpack *** toJExpr) $ HM.toList obj
+#endif
 
 -------------------------
 
