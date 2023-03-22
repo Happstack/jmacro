@@ -240,7 +240,9 @@ jsLang = javaStyle {
            P.opLetter = oneOf "|+-/*%<>&^.?=!~:@",
            P.commentLine = "//",
            P.commentStart = "/*",
-           P.commentEnd = "*/"}
+           P.commentEnd = "*/",
+           P.caseSensitive = True
+           }
 
 identifierWithBang = P.identifier $ P.makeTokenParser $ jsLang {P.identStart = letter <|> oneOf "_$!"}
 
