@@ -16,6 +16,7 @@ module Language.Javascript.JMacro.QQ(jmacro,jmacroE,parseJM,parseJME) where
 import Prelude hiding (tail, init, head, last, minimum, maximum, foldr1, foldl1, (!!), read)
 import Control.Applicative hiding ((<|>),many,optional)
 import Control.Arrow(first)
+import Control.Monad (ap, return, liftM2)
 import Control.Monad.State.Strict
 import Data.Char(digitToInt, toLower, isUpper)
 import Data.List(isPrefixOf, sort)
