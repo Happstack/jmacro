@@ -11,7 +11,7 @@ import Control.Monad.Identity
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Writer
-import Control.Monad.Error
+import Control.Monad.Except
 import Data.Either
 import Data.Map (Map)
 import Data.Maybe(catMaybes)
@@ -105,7 +105,7 @@ instance Show TCState where
 tcStateEmpty :: TCState
 tcStateEmpty = TCS [M.empty] M.empty [S.empty] S.empty 0 []
 
-newtype TMonad a = TMonad (ErrorT String (State TCState) a) deriving (Functor, Monad, MonadState TCState, MonadError String)
+newtype TMonad a = TMonad (ExceptT String (State TCState) a) deriving (Functor, Monad, MonadState TCState, MonadError String)
 
 instance Applicative TMonad where
     pure = return
@@ -115,10 +115,10 @@ class JTypeCheck a where
     typecheck :: a -> TMonad JType
 
 evalTMonad :: TMonad a -> Either String a
-evalTMonad (TMonad x) = evalState (runErrorT x) tcStateEmpty
+evalTMonad (TMonad x) = evalState (runExceptT x) tcStateEmpty
 
 runTMonad :: TMonad a -> (Either String a, TCState)
-runTMonad (TMonad x) = runState (runErrorT x) tcStateEmpty
+runTMonad (TMonad x) = runState (runExceptT x) tcStateEmpty
 
 withContext :: TMonad a -> TMonad String -> TMonad a
 withContext act cxt = do
