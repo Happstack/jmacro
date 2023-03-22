@@ -38,6 +38,7 @@ module Language.Javascript.JMacro.Base (
 import Prelude hiding (tail, init, head, last, minimum, maximum, foldr1, foldl1, (!!), read)
 import Control.Applicative hiding (empty)
 import Control.Arrow ((***))
+import Control.Monad (ap, return)
 import Control.Monad.State.Strict
 import Control.Monad.Identity
 
